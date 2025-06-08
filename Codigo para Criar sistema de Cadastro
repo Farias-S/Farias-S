@@ -1,0 +1,94 @@
+from django.db import models
+from django.contrib.auth.models import User
+
+# 1. Cadastro de Membros
+class Member(models.Model):
+    STATUS_CHOICES = [
+        ('ativo', 'Ativo'),
+        ('afastado', 'Afastado'),
+        ('discipulado', 'Em Discipulado'),
+    ]
+    ROLE_CHOICES = [
+        ('pastor', 'Pastor'),
+        ('diacono', 'Diácono'),
+        ('membro', 'Membro Ativo'),
+        ('visitante', 'Visitante'),
+    ]
+    name = models.CharField(max_length=150)
+    birth_date = models.DateField()
+    contact = models.CharField(max_length=100)
+    address = models.TextField()
+    photo = models.ImageField(upload_to='members/photos/', blank=True, null=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ativo')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+class ParticipationHistory(models.Model):
+    member = models.ForeignKey(Member, on_delete=models.CASCADE)
+    event_name = models.CharField(max_length=100)
+    date = models.DateField()
+    description = models.TextField(blank=True)
+
+# 2. Dados Eclesiásticos
+class EcclesiasticalData(models.Model):
+    member = models.OneToOneField(Member, on_delete=models.CASCADE)
+    baptism_date = models.DateField(blank=True, null=True)
+    baptism_location = models.CharField(max_length=150, blank=True)
+    baptism_minister = models.CharField(max_length=150, blank=True)
+    first_communion_date = models.DateField(blank=True, null=True)
+    confirmation_date = models.DateField(blank=True, null=True)
+    ministries = models.CharField(max_length=200, blank=True)
+    discipleship_courses = models.TextField(blank=True)
+    spiritual_status = models.CharField(max_length=100, blank=True)
+    family_group = models.CharField(max_length=100, blank=True)
+    testimonies = models.TextField(blank=True)
+
+class EventAttendance(models.Model):
+    member = models.ForeignKey(Member, on_delete=models.CASCADE)
+    event = models.CharField(max_length=100)
+    date = models.DateField()
+    attended = models.BooleanField(default=False)
+
+# 3. Gestão Financeira
+class Offering(models.Model):
+    member = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, blank=True)
+    date = models.DateField()
+    value = models.DecimalField(max_digits=8, decimal_places=2)
+    type = models.CharField(max_length=20, choices=[('dizimo', 'Dízimo'), ('oferta', 'Oferta')])
+    receipt = models.FileField(upload_to='finance/receipts/', blank=True, null=True)
+
+class Expense(models.Model):
+    date = models.DateField()
+    description = models.CharField(max_length=200)
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    category = models.CharField(max_length=50)
+    responsible = models.CharField(max_length=100)
+
+# 4. Planejamento de Atividades
+class Event(models.Model):
+    name = models.CharField(max_length=150)
+    date = models.DateTimeField()
+    description = models.TextField()
+    ministry = models.CharField(max_length=100, blank=True)
+    participants = models.ManyToManyField(Member, through='EventAttendance')
+
+class Notice(models.Model):
+    title = models.CharField(max_length=120)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    event = models.ForeignKey(Event, on_delete=models.SET_NULL, null=True, blank=True)
+
+# 5. Segurança e Controle de Acesso
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    ACCESS_LEVELS = [
+        ('admin', 'Administrador'),
+        ('pastor', 'Pastor'),
+        ('membro', 'Membro'),
+    ]
+    access_level = models.CharField(max_length=10, choices=ACCESS_LEVELS, default='membro')
+
+# Backup automático e criptografia são configurados no servidor e settings.py (não como modelos).
